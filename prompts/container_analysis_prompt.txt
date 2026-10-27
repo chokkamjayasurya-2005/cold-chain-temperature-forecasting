@@ -1,0 +1,7 @@
+Answer the question using only this JSON prediction context. Do not infer unprovided telemetry or treat the estimated risk index as a probability.
+
+User question:
+{{QUESTION}}
+
+Structured prediction context (JSON):
+{{CONTEXT_JSON}}

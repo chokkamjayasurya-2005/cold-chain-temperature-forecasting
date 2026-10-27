@@ -1,0 +1,7 @@
+model,mae,mse,rmse,r2,mape_pct,mape_note,training_seconds,tuned
+Linear Regression,0.16233576123961055,0.041331199305056174,0.2033007607094872,0.9995813203474632,,"Not reported: the target includes negative temperatures, so percentage error is not meaningful.",0.18062970000028145,False
+Gradient Boosting (tuned),0.16238272743643054,0.04135604695773921,0.20336186210235982,0.9995810686439857,,"Not reported: the target includes negative temperatures, so percentage error is not meaningful.",62.80862200000047,True
+Gradient Boosting,0.16238665820022033,0.04135913763499657,0.20336946092025857,0.9995810373358286,,"Not reported: the target includes negative temperatures, so percentage error is not meaningful.",7.457272200001171,False
+HistGradientBoosting,0.162547733271388,0.04148243090902069,0.20367236167192812,0.9995797883910607,,"Not reported: the target includes negative temperatures, so percentage error is not meaningful.",0.8381388000016159,False
+Extra Trees,0.16830809413914624,0.044286314884562895,0.21044313931454953,0.9995513854124785,,"Not reported: the target includes negative temperatures, so percentage error is not meaningful.",2.963646799998969,False
+Random Forest,0.17064800170818767,0.04535110856342842,0.21295799718120104,0.9995405991915368,,"Not reported: the target includes negative temperatures, so percentage error is not meaningful.",8.575792999999976,False

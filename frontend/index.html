@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f3f6f7" />
+    <link rel="icon" href="data:," />
+    <title>Cold Chain | Temperature Intelligence</title>
+    <link rel="stylesheet" href="/static/styles.css?v=10" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <a class="brand" href="/" aria-label="Cold Chain overview">
+        <span class="brand-mark" aria-hidden="true">CC</span>
+        <span><strong>Cold Chain</strong><small>Temperature intelligence</small></span>
+      </a>
+      <nav aria-label="Main navigation">
+        <p class="nav-group-title">Main</p>
+        <a class="nav-link" data-route="/" href="/">▦ <span>Overview</span></a>
+        <a class="nav-link" data-route="/prediction" href="/prediction">✦ <span>New prediction</span></a>
+        <a class="nav-link" data-route="/history" href="/history">◷ <span>Prediction history</span></a>
+        <p class="nav-group-title">Analytics</p>
+        <a class="nav-link" data-route="/analytics" href="/analytics">◇ <span>Model analytics</span></a>
+        <a class="nav-link" data-route="/dataset" href="/dataset">▤ <span>Dataset</span></a>
+      </nav>
+      <div class="sidebar-note">
+        <span class="status-dot" aria-hidden="true"></span>
+        <div><strong>Local monitoring</strong><small>Model-backed estimates</small></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div id="page-content" aria-live="polite"></div>
+      <footer>
+        <span>Cold Chain Temperature Intelligence</span>
+        <span>Predictions are estimates. Verify against approved measurements and procedures.</span>
+      </footer>
+    </main>
+    <script src="/static/app.js?v=10" defer></script>
+  </body>
+</html>

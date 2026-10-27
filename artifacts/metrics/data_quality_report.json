@@ -1,0 +1,222 @@
+{
+  "rows": 80000,
+  "columns": 9,
+  "column_names": [
+    "Container_ID",
+    "Cargo_Type",
+    "Ambient_External_Temp_C",
+    "Internal_Set_Point_C",
+    "Actual_Internal_Temp_C",
+    "HVAC_Power_Consumption_Watts",
+    "Seal_Integrity_Index",
+    "Forecasted_4Hr_Spoilage_Risk_Pct",
+    "Logistics_Action_Recommendation"
+  ],
+  "data_types": {
+    "Container_ID": "object",
+    "Cargo_Type": "object",
+    "Ambient_External_Temp_C": "float64",
+    "Internal_Set_Point_C": "float64",
+    "Actual_Internal_Temp_C": "float64",
+    "HVAC_Power_Consumption_Watts": "float64",
+    "Seal_Integrity_Index": "float64",
+    "Forecasted_4Hr_Spoilage_Risk_Pct": "float64",
+    "Logistics_Action_Recommendation": "object"
+  },
+  "missing_values": {
+    "Container_ID": 0,
+    "Cargo_Type": 0,
+    "Ambient_External_Temp_C": 0,
+    "Internal_Set_Point_C": 0,
+    "Actual_Internal_Temp_C": 0,
+    "HVAC_Power_Consumption_Watts": 0,
+    "Seal_Integrity_Index": 0,
+    "Forecasted_4Hr_Spoilage_Risk_Pct": 0,
+    "Logistics_Action_Recommendation": 0
+  },
+  "duplicate_rows": 0,
+  "unique_values": {
+    "Container_ID": 80000,
+    "Cargo_Type": 3,
+    "Ambient_External_Temp_C": 251,
+    "Internal_Set_Point_C": 3,
+    "Actual_Internal_Temp_C": 444,
+    "HVAC_Power_Consumption_Watts": 2734,
+    "Seal_Integrity_Index": 591,
+    "Forecasted_4Hr_Spoilage_Risk_Pct": 461,
+    "Logistics_Action_Recommendation": 2
+  },
+  "numeric_summary": {
+    "Ambient_External_Temp_C": {
+      "count": 80000.0,
+      "mean": 32.54142,
+      "std": 7.217169648,
+      "min": 20.0,
+      "25%": 26.3,
+      "50%": 32.5,
+      "75%": 38.8,
+      "max": 45.0
+    },
+    "Internal_Set_Point_C": {
+      "count": 80000.0,
+      "mean": -3.988175,
+      "std": 9.9294079674,
+      "min": -18.0,
+      "25%": -18.0,
+      "50%": 2.0,
+      "75%": 4.0,
+      "max": 4.0
+    },
+    "Actual_Internal_Temp_C": {
+      "count": 80000.0,
+      "mean": -3.488272375,
+      "std": 9.9314014101,
+      "min": -18.31,
+      "25%": -17.37,
+      "50%": 2.5,
+      "75%": 4.36,
+      "max": 5.26
+    },
+    "HVAC_Power_Consumption_Watts": {
+      "count": 80000.0,
+      "mean": 1826.139725,
+      "std": 623.0382619754,
+      "min": 529.0,
+      "25%": 1319.0,
+      "50%": 1784.0,
+      "75%": 2230.0,
+      "max": 3466.0
+    },
+    "Seal_Integrity_Index": {
+      "count": 80000.0,
+      "mean": 0.8997406375,
+      "std": 0.0906791266,
+      "min": 0.271,
+      "25%": 0.857,
+      "50%": 0.926,
+      "75%": 0.968,
+      "max": 1.0
+    },
+    "Forecasted_4Hr_Spoilage_Risk_Pct": {
+      "count": 80000.0,
+      "mean": 21.22987625,
+      "std": 6.5689448675,
+      "min": 0.1,
+      "25%": 16.8,
+      "50%": 21.2,
+      "75%": 25.6,
+      "max": 63.1
+    }
+  },
+  "categorical_counts": {
+    "Cargo_Type": {
+      "Biopharma_Vaccines": 26703,
+      "Fresh_Produce": 26674,
+      "Frozen_Seafood": 26623
+    },
+    "Logistics_Action_Recommendation": {
+      "SAFE_Maintain_Course": 79808,
+      "WARNING_Request_HVAC_Remote_Reset": 192
+    }
+  },
+  "categorical_distribution_note": "Container_ID is an identifier with a unique value per row; its distinct count is reported above, but its values are excluded from categorical frequency counts.",
+  "iqr_outlier_screen": {
+    "Ambient_External_Temp_C": {
+      "iqr_lower_fence": 7.550000000000008,
+      "iqr_upper_fence": 57.54999999999999,
+      "count_outside_fences": 0
+    },
+    "Internal_Set_Point_C": {
+      "iqr_lower_fence": -51.0,
+      "iqr_upper_fence": 37.0,
+      "count_outside_fences": 0
+    },
+    "Actual_Internal_Temp_C": {
+      "iqr_lower_fence": -49.965,
+      "iqr_upper_fence": 36.955,
+      "count_outside_fences": 0
+    },
+    "HVAC_Power_Consumption_Watts": {
+      "iqr_lower_fence": -47.5,
+      "iqr_upper_fence": 3596.5,
+      "count_outside_fences": 0
+    },
+    "Seal_Integrity_Index": {
+      "iqr_lower_fence": 0.6905,
+      "iqr_upper_fence": 1.1345,
+      "count_outside_fences": 2873
+    },
+    "Forecasted_4Hr_Spoilage_Risk_Pct": {
+      "iqr_lower_fence": 3.5999999999999996,
+      "iqr_upper_fence": 38.800000000000004,
+      "count_outside_fences": 626
+    }
+  },
+  "correlations": {
+    "Ambient_External_Temp_C": {
+      "Ambient_External_Temp_C": 1.0,
+      "Internal_Set_Point_C": -0.0041647261,
+      "Actual_Internal_Temp_C": -0.0041495846,
+      "HVAC_Power_Consumption_Watts": 0.5823686533,
+      "Seal_Integrity_Index": -0.0023503237,
+      "Forecasted_4Hr_Spoilage_Risk_Pct": -0.0014555029
+    },
+    "Internal_Set_Point_C": {
+      "Ambient_External_Temp_C": -0.0041647261,
+      "Internal_Set_Point_C": 1.0,
+      "Actual_Internal_Temp_C": 0.9997971812,
+      "HVAC_Power_Consumption_Watts": -0.7992930495,
+      "Seal_Integrity_Index": -0.0007952298,
+      "Forecasted_4Hr_Spoilage_Risk_Pct": -0.0010896263
+    },
+    "Actual_Internal_Temp_C": {
+      "Ambient_External_Temp_C": -0.0041495846,
+      "Internal_Set_Point_C": 0.9997971812,
+      "Actual_Internal_Temp_C": 1.0,
+      "HVAC_Power_Consumption_Watts": -0.7991140562,
+      "Seal_Integrity_Index": -0.0007478559,
+      "Forecasted_4Hr_Spoilage_Risk_Pct": 0.0110773237
+    },
+    "HVAC_Power_Consumption_Watts": {
+      "Ambient_External_Temp_C": 0.5823686533,
+      "Internal_Set_Point_C": -0.7992930495,
+      "Actual_Internal_Temp_C": -0.7991140562,
+      "HVAC_Power_Consumption_Watts": 1.0,
+      "Seal_Integrity_Index": -0.0008234207,
+      "Forecasted_4Hr_Spoilage_Risk_Pct": 0.0178045475
+    },
+    "Seal_Integrity_Index": {
+      "Ambient_External_Temp_C": -0.0023503237,
+      "Internal_Set_Point_C": -0.0007952298,
+      "Actual_Internal_Temp_C": -0.0007478559,
+      "HVAC_Power_Consumption_Watts": -0.0008234207,
+      "Seal_Integrity_Index": 1.0,
+      "Forecasted_4Hr_Spoilage_Risk_Pct": -0.2082364904
+    },
+    "Forecasted_4Hr_Spoilage_Risk_Pct": {
+      "Ambient_External_Temp_C": -0.0014555029,
+      "Internal_Set_Point_C": -0.0010896263,
+      "Actual_Internal_Temp_C": 0.0110773237,
+      "HVAC_Power_Consumption_Watts": 0.0178045475,
+      "Seal_Integrity_Index": -0.2082364904,
+      "Forecasted_4Hr_Spoilage_Risk_Pct": 1.0
+    }
+  },
+  "modeling_decisions": {
+    "target": "Actual_Internal_Temp_C",
+    "included_features": [
+      "Cargo_Type",
+      "Ambient_External_Temp_C",
+      "Internal_Set_Point_C",
+      "HVAC_Power_Consumption_Watts",
+      "Seal_Integrity_Index"
+    ],
+    "excluded_identifier": "Container_ID is unique per row and has no temporal or predictive semantics.",
+    "excluded_downstream_columns": [
+      "Forecasted_4Hr_Spoilage_Risk_Pct is a precomputed downstream risk estimate, not established as available at temperature-prediction time.",
+      "Logistics_Action_Recommendation is a downstream operational decision and would leak target-derived information."
+    ],
+    "temporal_split": "No timestamp or reliably reconstructable time field exists; use a seeded stratified random split.",
+    "outliers": "IQR fences are reported for inspection; observations are retained rather than dropped or clipped."
+  }
+}

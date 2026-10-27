@@ -1,0 +1,4 @@
+Explain the configured logistics recommendation using only the supplied JSON telemetry and model outputs. The recommendation is a demonstration rule and is not operationally validated. Do not invent regulations or claim food or medicine is safe.
+
+Structured context (JSON):
+{{CONTEXT_JSON}}

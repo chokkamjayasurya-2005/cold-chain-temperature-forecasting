@@ -1,0 +1,14 @@
+{
+  "risk_category_thresholds": {
+    "medium": 20,
+    "high": 40,
+    "critical": 60
+  },
+  "recommendation_thresholds": {
+    "monitor_deviation_c": 1.0,
+    "warning_deviation_c": 2.0,
+    "critical_deviation_c": 4.0,
+    "monitor_seal_integrity": 0.8,
+    "warning_seal_integrity": 0.6
+  }
+}

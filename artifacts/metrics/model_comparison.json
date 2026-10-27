@@ -1,0 +1,83 @@
+{
+  "selection_rule": "Lowest validation RMSE, then MAE, then highest R2.",
+  "selected_model": "Linear Regression",
+  "validation_results": [
+    {
+      "model": "Linear Regression",
+      "mae": 0.16233576123961055,
+      "mse": 0.041331199305056174,
+      "rmse": 0.2033007607094872,
+      "r2": 0.9995813203474632,
+      "mape_pct": null,
+      "mape_note": "Not reported: the target includes negative temperatures, so percentage error is not meaningful.",
+      "training_seconds": 0.18062970000028145,
+      "tuned": false
+    },
+    {
+      "model": "Gradient Boosting (tuned)",
+      "mae": 0.16238272743643054,
+      "mse": 0.04135604695773921,
+      "rmse": 0.20336186210235982,
+      "r2": 0.9995810686439857,
+      "mape_pct": null,
+      "mape_note": "Not reported: the target includes negative temperatures, so percentage error is not meaningful.",
+      "training_seconds": 62.80862200000047,
+      "tuned": true
+    },
+    {
+      "model": "Gradient Boosting",
+      "mae": 0.16238665820022033,
+      "mse": 0.04135913763499657,
+      "rmse": 0.20336946092025857,
+      "r2": 0.9995810373358286,
+      "mape_pct": null,
+      "mape_note": "Not reported: the target includes negative temperatures, so percentage error is not meaningful.",
+      "training_seconds": 7.457272200001171,
+      "tuned": false
+    },
+    {
+      "model": "HistGradientBoosting",
+      "mae": 0.162547733271388,
+      "mse": 0.04148243090902069,
+      "rmse": 0.20367236167192812,
+      "r2": 0.9995797883910607,
+      "mape_pct": null,
+      "mape_note": "Not reported: the target includes negative temperatures, so percentage error is not meaningful.",
+      "training_seconds": 0.8381388000016159,
+      "tuned": false
+    },
+    {
+      "model": "Extra Trees",
+      "mae": 0.16830809413914624,
+      "mse": 0.044286314884562895,
+      "rmse": 0.21044313931454953,
+      "r2": 0.9995513854124785,
+      "mape_pct": null,
+      "mape_note": "Not reported: the target includes negative temperatures, so percentage error is not meaningful.",
+      "training_seconds": 2.963646799998969,
+      "tuned": false
+    },
+    {
+      "model": "Random Forest",
+      "mae": 0.17064800170818767,
+      "mse": 0.04535110856342842,
+      "rmse": 0.21295799718120104,
+      "r2": 0.9995405991915368,
+      "mape_pct": null,
+      "mape_note": "Not reported: the target includes negative temperatures, so percentage error is not meaningful.",
+      "training_seconds": 8.575792999999976,
+      "tuned": false
+    }
+  ],
+  "tuning": {
+    "candidate": "Gradient Boosting",
+    "best_parameters": {
+      "model__n_estimators": 80,
+      "model__max_depth": 2,
+      "model__learning_rate": 0.1
+    },
+    "best_cross_validation_rmse": 0.19942469652202888,
+    "cross_validation_folds": 3,
+    "randomized_settings": 4
+  }
+}

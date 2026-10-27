@@ -1,0 +1,4 @@
+Explain the supplied estimated risk index in plain language. It is a configurable operational score, not a calibrated spoilage probability. Use only the supplied JSON facts and clearly state when a measurement is unavailable.
+
+Structured context (JSON):
+{{CONTEXT_JSON}}
