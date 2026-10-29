@@ -2,18 +2,16 @@ import os
 from itertools import product
 
 import numpy as np
-from fastapi.testclient import TestClient
-
 from backend.app import app
 from ml.common import FEATURES, TARGET, load_cargo_types, load_dataset
 from ml.train import make_pipeline
 from services.llm_service import GroqConfigurationError, GroqRequestError
 from sklearn.linear_model import LinearRegression
+from tests.conftest import authenticated_client
 
 
 def test_prediction_validation_and_response(tmp_path):
-    os.environ["DATABASE_PATH"] = str(tmp_path / "history.sqlite3")
-    with TestClient(app) as client:
+    with authenticated_client(tmp_path / "history.sqlite3") as client:
         assert client.get("/health").json() == {"status": "ok", "model_loaded": True}
         payload = {
             "cargo_type": "Frozen_Seafood",
@@ -39,8 +37,7 @@ def test_prediction_validation_and_response(tmp_path):
 
 
 def test_web_routes_dataset_summary_and_history_clear(tmp_path):
-    os.environ["DATABASE_PATH"] = str(tmp_path / "history.sqlite3")
-    with TestClient(app) as client:
+    with authenticated_client(tmp_path / "history.sqlite3") as client:
         for route in ("/", "/overview", "/prediction", "/analytics", "/history", "/dataset"):
             page = client.get(route, headers={"accept": "text/html"})
             assert page.status_code == 200
@@ -70,8 +67,7 @@ def test_web_routes_dataset_summary_and_history_clear(tmp_path):
 
 
 def test_invalid_payload_and_batch_boundary(tmp_path, monkeypatch):
-    os.environ["DATABASE_PATH"] = str(tmp_path / "history.sqlite3")
-    with TestClient(app) as client:
+    with authenticated_client(tmp_path / "history.sqlite3") as client:
         base = {
             "cargo_type": "Frozen_Seafood",
             "ambient_temperature_c": 25,
@@ -147,7 +143,7 @@ def test_prediction_handles_dataset_categories_and_numeric_boundaries(tmp_path):
         ],
     }
     tested = 0
-    with TestClient(app) as client:
+    with authenticated_client(tmp_path / "history.sqlite3") as client:
         for cargo_type in load_cargo_types():
             for ambient, set_point, hvac, seal in product(
                 (feature_values["ambient_temperature_c"][0], feature_values["ambient_temperature_c"][2]),
@@ -188,8 +184,8 @@ def test_prediction_handles_dataset_categories_and_numeric_boundaries(tmp_path):
     assert tested == len(load_cargo_types()) * 17
 
 
-def test_chat_reports_groq_configuration_and_request_failures(monkeypatch):
-    with TestClient(app) as client:
+def test_chat_reports_groq_configuration_and_request_failures(monkeypatch, tmp_path):
+    with authenticated_client(tmp_path / "history.sqlite3") as client:
         prediction = client.post(
             "/predict",
             json={

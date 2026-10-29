@@ -6,36 +6,47 @@
     <meta name="theme-color" content="#f3f6f7" />
     <link rel="icon" href="data:," />
     <title>Cold Chain | Temperature Intelligence</title>
-    <link rel="stylesheet" href="/static/styles.css?v=10" />
+    <link rel="stylesheet" href="/static/styles.css?v=15" />
   </head>
   <body>
-    <aside class="sidebar">
-      <a class="brand" href="/" aria-label="Cold Chain overview">
-        <span class="brand-mark" aria-hidden="true">CC</span>
-        <span><strong>Cold Chain</strong><small>Temperature intelligence</small></span>
-      </a>
-      <nav aria-label="Main navigation">
-        <p class="nav-group-title">Main</p>
-        <a class="nav-link" data-route="/" href="/">▦ <span>Overview</span></a>
-        <a class="nav-link" data-route="/prediction" href="/prediction">✦ <span>New prediction</span></a>
-        <a class="nav-link" data-route="/history" href="/history">◷ <span>Prediction history</span></a>
-        <p class="nav-group-title">Analytics</p>
-        <a class="nav-link" data-route="/analytics" href="/analytics">◇ <span>Model analytics</span></a>
-        <a class="nav-link" data-route="/dataset" href="/dataset">▤ <span>Dataset</span></a>
-      </nav>
-      <div class="sidebar-note">
-        <span class="status-dot" aria-hidden="true"></span>
-        <div><strong>Local monitoring</strong><small>Model-backed estimates</small></div>
-      </div>
-    </aside>
-
-    <main class="main">
-      <div id="page-content" aria-live="polite"></div>
-      <footer>
-        <span>Cold Chain Temperature Intelligence</span>
-        <span>Predictions are estimates. Verify against approved measurements and procedures.</span>
-      </footer>
-    </main>
-    <script src="/static/app.js?v=10" defer></script>
+    <div id="login-screen" class="login-screen" hidden></div>
+    <div id="app-shell" hidden>
+      <aside class="sidebar">
+        <a class="brand" href="/" aria-label="Cold Chain overview">
+          <span class="brand-mark" aria-hidden="true">CC</span>
+          <span><strong>Cold Chain</strong><small>Temperature intelligence</small></span>
+        </a>
+        <nav aria-label="Main navigation">
+          <p class="nav-group-title">Main</p>
+          <a class="nav-link" data-route="/" href="/">▦ <span>Overview</span></a>
+          <a class="nav-link" data-route="/prediction" href="/prediction">✦ <span>New prediction</span></a>
+          <a class="nav-link" data-route="/history" href="/history">◷ <span>Prediction history</span></a>
+          <p class="nav-group-title admin-nav" hidden>Administration</p>
+          <a class="nav-link admin-nav" data-route="/analytics" href="/analytics" hidden>◇ <span>Model analytics</span></a>
+          <a class="nav-link admin-nav" data-route="/dataset" href="/dataset" hidden>▤ <span>Dataset</span></a>
+          <a class="nav-link admin-nav" data-route="/users" href="/users" hidden>♙ <span>User management</span></a>
+          <a class="nav-link admin-nav" data-route="/activity" href="/activity" hidden>◷ <span>Activity log</span></a>
+          <p class="nav-group-title">Account</p>
+          <a class="nav-link" data-route="/account" href="/account">⚙ <span>My account</span></a>
+        </nav>
+        <div class="sidebar-note" id="local-monitoring-note">
+          <span class="status-dot" aria-hidden="true"></span>
+          <div><strong>Local monitoring</strong><small>Model-backed estimates</small></div>
+        </div>
+        <div class="sidebar-note genai-note" id="genai-status-note">
+          <span class="genai-status-dot" aria-hidden="true"></span>
+          <div><strong>GenAI API</strong><small>NOT CONNECTED</small></div>
+        </div>
+      </aside>
+      <main class="main">
+        <div class="account-bar" id="account-bar"></div>
+        <div id="page-content" aria-live="polite"></div>
+        <footer>
+          <span>Cold Chain Temperature Intelligence</span>
+          <span>Predictions are estimates. Verify against approved measurements and procedures.</span>
+        </footer>
+      </main>
+    </div>
+    <script src="/static/app.js?v=15" defer></script>
   </body>
 </html>

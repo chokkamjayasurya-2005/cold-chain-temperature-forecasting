@@ -50,8 +50,51 @@ The FastAPI application serves a separate page for each area of the dashboard:
 - `/analytics` — held-out model metrics, comparison, and charts
 - `/history` — searchable, filterable SQLite prediction history
 - `/dataset` — data quality, statistics, sample records, and distributions
+- `/users` — administrator-only account search and management
+- `/user-details/{user_id}` — administrator-only account details and password management
+- `/activity` — administrator-only activity log
+- `/account` — personal profile and password settings
 
-The sidebar remains available across pages, and prediction history is stored locally in SQLite. Follow-up questions on the prediction page use the existing optional Groq integration and the latest prediction as context; they require `GROQ_API_KEY`. The overview, analytics, dataset, history, and prediction features work without that key.
+The sidebar remains available across pages, and prediction history is stored locally in SQLite. The dashboard requires a signed-in account. Follow-up questions on the prediction page use the existing optional Groq integration and the latest prediction as context; they require `GROQ_API_KEY`. Responses are rendered as safe Markdown and are instructed to distinguish model estimates from observed inputs, avoid unsupported causal explanations, and note limitations. The overview, analytics, dataset, history, and prediction features work without that key.
+
+### Accounts and roles
+
+The web dashboard uses administrator-managed `ADMIN` and `USER` accounts. There is no default username or password. Create the first administrator interactively after configuring `.env` and before starting the web server:
+
+```powershell
+Copy-Item .env.example .env
+python -m backend.bootstrap_admin
+```
+
+The bootstrap command prompts for a username and password without echoing the password. Passwords must be at least 6 characters and include at least three of lowercase letters, uppercase letters, numbers, and symbols. Bootstrap is refused once an active administrator exists.
+
+Administrators can search accounts by username, full name, email, or ID; open a separate account profile; edit account fields; assign roles; activate/deactivate accounts; and reset passwords. Self-demotion, self-deactivation, and removal of the last active administrator are blocked. Newly created and reset accounts must change their temporary password at their next sign-in. Users can update their own email and password, make predictions, and view or clear only their own prediction history. Passwords must be at least 6 characters and include at least three of lowercase letters, uppercase letters, numbers, and symbols. Changing or resetting a password invalidates existing sessions for that account. Administrator-only analytics, dataset, user-management, and activity-log endpoints are enforced by the server, not just hidden in the interface.
+
+The GenAI API status is displayed as **NOT CONNECTED** until the application implements and successfully completes an actual connection check. Follow-up chat remains an optional feature; its availability alone is not represented as a verified connection status.
+
+Self-registration is available at `/signup`; each public registration is assigned `USER` by the backend. Sign-in accepts either username or email. “Remember me” extends the authenticated session to 30 days; otherwise it expires after eight hours. Password reset is single-use, expires after 30 minutes, and stores only a SHA-256 digest of the random reset token. The reset token is sent in the URL fragment so it is not included in HTTP request paths or application access logs.
+
+Password reset email requires `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, and `APP_BASE_URL`. Set `SMTP_USERNAME` and `SMTP_PASSWORD` together for an authenticated relay; STARTTLS is enabled by default. Local development can use a local Mailpit inbox on port 1025 with `SMTP_STARTTLS=false` and `APP_ENV=development`, then open the Mailpit web inbox (commonly port 8025). Never disable STARTTLS outside development. Without mail configuration, reset requests return a non-enumerating message and no reset token is created or exposed; the UI does not claim that an email was sent.
+
+For optional development test accounts, run `python -m backend.seed_dev_accounts`. It creates only missing `admin`/`testuser` accounts, generates a secure password only for each account it creates, and prints that password once. Existing accounts—including their email, role, and password—are left unchanged. This utility is for local development only.
+
+If an account's current temporary password is unavailable, an operator with authorized access to the application host can reset that existing account without creating a duplicate or changing the database. The command prompts for account confirmation and for a new password without echoing it, stores only its Argon2 hash, and requires a password change at next sign-in:
+
+```powershell
+python -m backend.reset_user_password --username admin
+```
+
+Use the account's own temporary password when signing in to its forced password-change screen. Each account has a distinct password; the screen identifies which username is signed in.
+
+On the first startup against an existing prediction database, the app adds account and audit tables and a nullable owner column. It creates a sibling `*.pre-rbac.bak` backup before changing a legacy prediction table. Existing rows remain unowned and are visible only in the administrator's global history; user accounts see only predictions created under their own account.
+
+Sessions use signed, HTTP-only, same-site cookies that expire after eight hours. Mutating requests also require a CSRF token. Development may use an ephemeral session secret; for production, set `APP_ENV=production`, configure a long random `SESSION_SECRET`, enable HTTPS, and set `CORS_ORIGINS` to the exact trusted web origin. Production mode requires a configured secret and automatically marks the session cookie secure. Generate a secret locally with:
+
+```powershell
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+Keep `.env` private and never commit real passwords or session secrets.
 
 ## Streamlit dashboard
 

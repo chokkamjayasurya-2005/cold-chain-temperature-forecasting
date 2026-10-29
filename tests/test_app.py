@@ -4,6 +4,7 @@ from streamlit.testing.v1 import AppTest
 from ml.common import ROOT, load_cargo_types
 from services.llm_service import (
     GroqConfigurationError,
+    SYSTEM_PROMPT,
     generate_ai_explanation,
 )
 
@@ -79,6 +80,9 @@ def test_groq_service_uses_responses_api(monkeypatch):
     assert captured["request"]["model"] == "openai/gpt-oss-20b"
     assert "Explain this prediction." in captured["request"]["input"]
     assert '"temperature": 4.5' in captured["request"]["input"]
+    assert "Current Prediction Summary" in captured["request"]["input"]
+    assert "not causal effects or additive contributions" in captured["request"]["input"]
+    assert "do not infer missing" in SYSTEM_PROMPT
 
 
 def test_groq_service_requires_api_key(monkeypatch):

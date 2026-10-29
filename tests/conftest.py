@@ -1,5 +1,8 @@
 from pathlib import Path
+import os
+from contextlib import contextmanager
 
+from fastapi.testclient import TestClient
 
 TEST_RESULTS = {}
 REPORT_GROUPS = {
@@ -17,6 +20,7 @@ REPORT_GROUPS = {
         "test_temperature_deviation_categories",
     ),
     "Input Validation Tests": ("test_invalid_payload_and_batch_boundary",),
+    "Authentication and RBAC Tests": ("test_auth.py", "test_auth_lifecycle.py"),
     "Streamlit Tests": ("test_streamlit_dashboard_renders", "test_streamlit_ai_assistant"),
     "Groq API Adapter Tests": (
         "test_invalid_payload_and_batch_boundary",
@@ -24,6 +28,45 @@ REPORT_GROUPS = {
     ),
     "End-to-End Test": ("test_end_to_end_prediction_flow",),
 }
+
+
+@contextmanager
+def authenticated_client(
+    database_path: Path,
+    role: str = "ADMIN",
+    username: str | None = None,
+):
+    from backend import database
+    from backend.app import app
+    from backend.auth import hash_password
+
+    previous_database_path = os.environ.get("DATABASE_PATH")
+    try:
+        os.environ["DATABASE_PATH"] = str(database_path)
+        database.initialize_database()
+        username = username or f"test-{role.lower()}"
+        if database.get_user_by_username(username) is None:
+            database.create_user(
+                username=username,
+                email=None,
+                password_hash=hash_password("AdminStrongPassword1!"),
+                role=role,
+            )
+        with TestClient(app) as client:
+            csrf = client.get("/auth/csrf").json()["csrf_token"]
+            response = client.post(
+                "/auth/login",
+                json={"username": username, "password": "AdminStrongPassword1!"},
+                headers={"X-CSRF-Token": csrf},
+            )
+            assert response.status_code == 200
+            client.headers.update({"X-CSRF-Token": response.json()["csrf_token"]})
+            yield client
+    finally:
+        if previous_database_path is None:
+            os.environ.pop("DATABASE_PATH", None)
+        else:
+            os.environ["DATABASE_PATH"] = previous_database_path
 
 
 def pytest_runtest_logreport(report):
