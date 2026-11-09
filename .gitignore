@@ -1,0 +1,65 @@
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+.streamlit/credentials.toml
+
+# Python environments and bytecode
+.venv/
+venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python test, type-checker, and linter caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+
+# Packaging and build output
+build/
+dist/
+site/
+*.egg-info/
+
+# Local databases, backups, logs, and temporary files
+*.sqlite
+*.sqlite3
+*.db
+*.bak
+*.log
+logs/
+*.tmp
+*.temp
+
+# Generated model artifacts and EDA plots
+artifacts/models/*.joblib
+artifacts/models/*.pkl
+artifacts/eda/*.png
+artifacts/metrics/data_quality_report.json
+artifacts/metrics/evaluation_samples.json
+artifacts/metrics/model_comparison.csv
+artifacts/metrics/model_comparison.json
+artifacts/metrics/model_info.json
+
+# Jupyter and local tooling
+.ipynb_checkpoints/
+.idea/
+.vscode/
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Browser and end-to-end test output
+playwright-report/
+test-results/
