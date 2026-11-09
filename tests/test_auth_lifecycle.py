@@ -71,6 +71,161 @@ def _register(client, csrf, **overrides):
     )
 
 
+def test_basic_profile_updates_preserve_access_and_support_updated_login_ids(tmp_path, monkeypatch):
+    database_path, client = _client(tmp_path, monkeypatch)
+    admin_id = database.create_user(
+        "profile-admin",
+        "profile-admin@example.net",
+        hash_password("AdminP4!"),
+        "ADMIN",
+        full_name="Profile Admin",
+    )
+    user_id = database.create_user(
+        "profile-user",
+        "profile-user@example.net",
+        hash_password("UserP4!"),
+        "USER",
+        full_name="Profile User",
+    )
+    other_id = database.create_user(
+        "profile-other",
+        "profile-other@example.net",
+        hash_password("OtherP4!"),
+        "USER",
+        full_name="Other User",
+    )
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO prediction_history (
+                timestamp, input_features_json, predicted_temperature_c,
+                risk_index_pct, risk_level, recommendation, user_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "2026-01-01T00:00:00+00:00",
+                json.dumps({"cargo_type": "Fresh_Produce", "set_point_c": 4}),
+                5.0,
+                12.0,
+                "LOW",
+                "Monitor conditions.",
+                user_id,
+            ),
+        )
+
+    def login(username, password):
+        csrf = _csrf(client)
+        response = client.post(
+            "/auth/login",
+            json={"username": username, "password": password},
+            headers={"X-CSRF-Token": csrf},
+        )
+        assert response.status_code == 200
+        client.headers.update({"X-CSRF-Token": response.json()["csrf_token"]})
+        return response
+
+    with client:
+        login("profile-admin", "AdminP4!")
+        admin_profile = client.patch(
+            "/profile",
+            json={
+                "full_name": "  Updated Admin  ",
+                "username": " updated-admin ",
+                "email": " UPDATED-ADMIN@example.net ",
+            },
+        )
+        assert admin_profile.status_code == 200
+        assert admin_profile.json()["full_name"] == "Updated Admin"
+        assert admin_profile.json()["username"] == "updated-admin"
+        assert admin_profile.json()["email"] == "updated-admin@example.net"
+        assert admin_profile.json()["role"] == "ADMIN"
+        assert "password_hash" not in admin_profile.text
+        assert client.patch(
+            "/profile",
+            json={
+                "full_name": "Updated Admin",
+                "username": "updated-admin",
+                "email": "updated-admin@example.net",
+                "role": "USER",
+            },
+        ).status_code == 422
+        assert client.patch(
+            "/admin/users/{}".format(other_id),
+            json={"full_name": "Hacked", "username": "hacked-user"},
+        ).status_code == 200
+        assert client.get(f"/admin/users/{other_id}").json()["username"] == "hacked-user"
+
+        assert client.post("/auth/logout").status_code == 200
+        login("updated-admin@example.net", "AdminP4!")
+        assert client.get("/admin/dashboard").status_code == 200
+        assert client.get("/admin/users").status_code == 200
+
+        user_login = client.post(
+            "/auth/logout",
+            headers={"X-CSRF-Token": client.headers["X-CSRF-Token"]},
+        )
+        assert user_login.status_code == 200
+        csrf = _csrf(client)
+        user_login = client.post(
+            "/auth/login",
+            json={"username": "profile-user", "password": "UserP4!"},
+            headers={"X-CSRF-Token": csrf},
+        )
+        assert user_login.status_code == 200
+        client.headers.update({"X-CSRF-Token": user_login.json()["csrf_token"]})
+        user_profile = client.patch(
+            "/profile",
+            json={
+                "full_name": "Updated User",
+                "username": "updated-user",
+                "email": "updated-user@example.net",
+            },
+        )
+        assert user_profile.status_code == 200
+        assert user_profile.json()["role"] == "USER"
+        assert client.patch(
+            f"/admin/users/{other_id}",
+            json={"full_name": "Not Authorized", "username": "not-authorized"},
+        ).status_code == 403
+        assert client.patch(
+            "/profile",
+            json={
+                "full_name": "Duplicate username",
+                "username": " HACKED-USER ",
+                "email": "unique@example.net",
+            },
+        ).status_code == 409
+        duplicate_email = client.patch(
+            "/profile",
+            json={
+                "full_name": "Duplicate email",
+                "username": "unused-user",
+                "email": "profile-other@example.net",
+            },
+        )
+        assert duplicate_email.status_code == 409
+        assert "Email" in duplicate_email.json()["detail"]
+        assert client.post("/auth/logout").status_code == 200
+        csrf = _csrf(client)
+        relogin = client.post(
+            "/auth/login",
+            json={"username": "updated-user@example.net", "password": "UserP4!"},
+            headers={"X-CSRF-Token": csrf},
+        )
+        assert relogin.status_code == 200
+        assert relogin.json()["user"]["full_name"] == "Updated User"
+        assert relogin.json()["user"]["role"] == "USER"
+        assert client.get("/user/dashboard").json()["recent_predictions"][0]["id"]
+
+    assert database.get_user_by_id(admin_id)["role"] == "ADMIN"
+    assert database.get_user_by_id(user_id)["role"] == "USER"
+    with sqlite3.connect(database_path) as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM prediction_history WHERE user_id = ?",
+            (user_id,),
+        ).fetchone()[0] == 1
+
+
 def test_registration_unique_login_logout_and_user_rbac(tmp_path, monkeypatch):
     database_path, client = _client(tmp_path, monkeypatch)
     with client:
@@ -422,19 +577,58 @@ def test_admin_search_user_details_edits_and_password_change_relogin(tmp_path):
                 "SELECT used_at FROM password_reset_tokens WHERE user_id = ?",
                 (target_id,),
             ).fetchone()[0] is not None
+        target_before_profile_edit = database.get_user_by_id(target_id)
 
         updated = admin.patch(
             f"/admin/users/{target_id}",
-            json={"full_name": "Updated Näme", "email": "updated@example.net"},
+            json={
+                "full_name": " Updated Name ",
+                "username": " updated-profile-target ",
+                "email": " UPDATED@example.net ",
+                "role": "ADMIN",
+            },
         )
         assert updated.status_code == 200
-        assert admin.get(f"/admin/users/{target_id}").json()["full_name"] == "Updated Näme"
-        by_name = admin.get("/admin/users", params={"search": "UPDATED NÄME"})
+        assert updated.json()["full_name"] == "Updated Name"
+        assert updated.json()["username"] == "updated-profile-target"
+        assert updated.json()["email"] == "updated@example.net"
+        assert updated.json()["role"] == "ADMIN"
+        reloaded = admin.get(f"/admin/users/{target_id}")
+        assert reloaded.status_code == 200
+        assert reloaded.json()["full_name"] == "Updated Name"
+        assert reloaded.json()["username"] == "updated-profile-target"
+        assert reloaded.json()["email"] == "updated@example.net"
+        assert reloaded.json()["role"] == "ADMIN"
+        by_name = admin.get("/admin/users", params={"search": "UPDATED NAME"})
         assert [user["id"] for user in by_name.json()] == [target_id]
+        assert admin.patch(
+            f"/admin/users/{target_id}",
+            json={"role": "USER"},
+        ).json()["role"] == "USER"
+        assert admin.patch(
+            f"/admin/users/{target_id}",
+            json={"username": "test-admin"},
+        ).status_code == 409
         assert admin.patch(
             f"/admin/users/{target_id}",
             json={"email": "profile@example.net"},
         ).status_code == 409
+        assert admin.patch(
+            f"/admin/users/{target_id}",
+            json={"full_name": "   "},
+        ).status_code == 422
+        assert admin.patch(
+            f"/admin/users/{target_id}",
+            json={"email": ""},
+        ).status_code == 422
+        target = admin.get(f"/admin/users/{target_id}").json()
+        assert target["role"] == "USER"
+        assert target["username"] == "updated-profile-target"
+        assert target["email"] == "updated@example.net"
+        assert target["full_name"] == "Updated Name"
+        assert target["is_active"] == target_before_profile_edit["is_active"]
+        assert target["must_change_password"] == target_before_profile_edit["must_change_password"]
+        assert database.get_user_by_id(target_id)["password_hash"] == target_before_profile_edit["password_hash"]
         assert admin.patch(
             f"/admin/users/{admin_id}",
             json={"role": "USER"},
@@ -484,6 +678,59 @@ def test_admin_search_user_details_edits_and_password_change_relogin(tmp_path):
         assert accepted_new.status_code == 200
         assert accepted_new.json()["user"]["role"] == "ADMIN"
         assert accepted_new.json()["user"]["is_active"] is True
+
+
+def test_admin_history_clear_is_own_only_and_user_accounts_can_be_deactivated(tmp_path):
+    database_path = tmp_path / "admin-history-scope.sqlite3"
+    with authenticated_client(database_path) as admin:
+        admin_id = admin.get("/auth/me").json()["user"]["id"]
+        created = admin.post(
+            "/admin/users",
+            json={
+                "username": "deactivate-target",
+                "email": "deactivate@example.net",
+                "password": "TempPass4!",
+                "role": "USER",
+            },
+        )
+        assert created.status_code == 201
+        target_id = created.json()["id"]
+
+        with sqlite3.connect(database_path) as connection:
+            for user_id in (admin_id, target_id):
+                connection.execute(
+                    """
+                    INSERT INTO prediction_history (
+                        timestamp, input_features_json, predicted_temperature_c,
+                        risk_index_pct, risk_level, recommendation, user_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        datetime.now(timezone.utc).isoformat(),
+                        json.dumps({"cargo_type": "Fresh_Produce", "set_point_c": 4}),
+                        5.0,
+                        12.0,
+                        "LOW",
+                        "Continue monitoring.",
+                        user_id,
+                    ),
+                )
+
+        cleared = admin.delete("/history")
+        assert cleared.status_code == 200
+        assert cleared.json()["deleted"] == 1
+        with sqlite3.connect(database_path) as connection:
+            assert connection.execute(
+                "SELECT user_id, COUNT(*) FROM prediction_history GROUP BY user_id"
+            ).fetchall() == [(target_id, 1)]
+
+        deactivated = admin.patch(
+            f"/admin/users/{target_id}",
+            json={"is_active": False},
+        )
+        assert deactivated.status_code == 200
+        assert deactivated.json()["is_active"] is False
+        assert len(admin.get("/history").json()) == 1
 
 
 def test_user_password_change_preserves_role_and_history(tmp_path):

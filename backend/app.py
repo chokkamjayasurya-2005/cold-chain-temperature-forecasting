@@ -35,8 +35,9 @@ from backend.schemas import (
     LoginRequest,
     PasswordChangeRequest,
     PasswordResetCompletion,
-    PasswordResetRequestLink,
     PasswordResetRequest,
+    PasswordResetRequestLink,
+    ProfileUpdateRequest,
     PredictionRequest,
     PredictionResponse,
     RegistrationRequest,
@@ -386,22 +387,28 @@ def profile(user: CurrentUser):
 
 @app.patch("/profile")
 def update_profile(
-    payload: UserUpdateRequest,
+    payload: ProfileUpdateRequest,
     user: CurrentUser,
     _csrf: CsrfProtected,
 ):
-    if payload.role is not None or payload.is_active is not None:
-        raise HTTPException(status_code=403, detail="Role and account status are administrator-managed.")
+    updates = payload.model_dump()
     try:
-        database.update_user(user["id"], {"email": payload.email})
+        updated = database.update_user_guarded(user["id"], updates)
     except sqlite3.IntegrityError as error:
-        raise HTTPException(status_code=409, detail="Email address is already in use.") from error
+        detail = (
+            "Username is already in use."
+            if "users.username" in str(error).lower()
+            else "Email address is already in use."
+        )
+        raise HTTPException(status_code=409, detail=detail) from error
+    if not updated:
+        raise HTTPException(status_code=404, detail="Account not found.")
     database.log_activity(
         actor_user_id=user["id"],
         action="profile_updated",
         target_type="account",
         target_id=user["id"],
-        safe_metadata={"email_updated": payload.email is not None},
+        safe_metadata={"updated_fields": sorted(updates)},
     )
     return _session_user(database.get_user_by_id(user["id"]))
 
@@ -493,6 +500,10 @@ def admin_update_user(
     updates = payload.model_dump(exclude_unset=True)
     if not updates:
         raise HTTPException(status_code=422, detail="Provide at least one editable field.")
+    for field in ("full_name", "username", "email"):
+        if field in updates and updates[field] is None:
+            label = {"full_name": "Full name", "username": "Username", "email": "Email"}[field]
+            raise HTTPException(status_code=422, detail=f"{label} is required.")
     previous_account = database.get_user_by_id(user_id)
     if previous_account is None:
         raise HTTPException(status_code=404, detail="User not found.")
@@ -509,7 +520,12 @@ def admin_update_user(
     except ValueError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     except sqlite3.IntegrityError as error:
-        raise HTTPException(status_code=409, detail="Email address is already in use.") from error
+        detail = (
+            "Username is already in use."
+            if "users.username" in str(error).lower()
+            else "Email address is already in use."
+        )
+        raise HTTPException(status_code=409, detail=detail) from error
     if not exists:
         raise HTTPException(status_code=404, detail="User not found.")
     if "role" in updates and updates["role"] != previous_account["role"]:
@@ -762,13 +778,12 @@ def admin_activity_csv(
 
 @app.delete("/history")
 def delete_history(user: CurrentUser, _csrf: CsrfProtected):
-    user_id = None if user["role"] == "ADMIN" else user["id"]
-    deleted = database.clear_history(user_id=user_id)
+    deleted = database.clear_history(user_id=user["id"])
     database.log_activity(
         actor_user_id=user["id"],
         action="prediction_history_cleared",
         target_type="prediction_history",
-        safe_metadata={"deleted_count": deleted, "scope": "all" if user_id is None else "own"},
+        safe_metadata={"deleted_count": deleted, "scope": "own"},
     )
     return {"deleted": deleted}
 

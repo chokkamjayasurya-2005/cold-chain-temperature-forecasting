@@ -85,6 +85,8 @@ html body footer{font-size:12px}
 @media(max-width:760px){.user-detail-grid{grid-template-columns:1fr}.user-detail-actions{flex-direction:column}.user-detail-actions .button{width:100%}}
 .prediction-form-actions{display:flex;gap:9px}.prediction-form-actions .button-primary{width:auto;flex:1}.prediction-form-actions .button-secondary{min-width:88px}
 @media(max-width:760px){.prediction-form-actions{flex-direction:column}.prediction-form-actions .button{width:100%}}
+.account-access-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:16px;padding-top:13px;border-top:1px solid var(--line)}.account-access-actions p{margin:0;color:var(--muted);font-size:12px}
+@media(max-width:760px){.account-access-actions{align-items:stretch;flex-direction:column}}
 html{scroll-behavior:smooth}
 body{margin:0;min-width:320px}
 button,input,select{font:inherit}

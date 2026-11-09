@@ -1,7 +1,7 @@
 import re
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from ml.common import load_cargo_types
 
@@ -112,26 +112,68 @@ class UserCreateRequest(BaseModel):
     role: Literal["ADMIN", "USER"]
 
 
+class ProfileUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    full_name: str = Field(min_length=1, max_length=120)
+    username: str = Field(min_length=3, max_length=32, pattern=r"^[A-Za-z0-9_.-]+$")
+    email: str = Field(min_length=3, max_length=254)
+
+    @field_validator("full_name", "username", mode="before")
+    @classmethod
+    def normalize_required_text(cls, value: str) -> str:
+        if not isinstance(value, str):
+            raise ValueError("This field must be text.")
+        value = value.strip()
+        if not value:
+            raise ValueError("This field cannot be empty.")
+        return value
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return _normalize_email(value)
+
+
 class UserUpdateRequest(BaseModel):
     full_name: str | None = Field(default=None, min_length=1, max_length=120)
+    username: str | None = Field(default=None, min_length=3, max_length=32, pattern=r"^[A-Za-z0-9_.-]+$")
     email: str | None = Field(default=None, max_length=254)
     role: Literal["ADMIN", "USER"] | None = None
     is_active: bool | None = None
 
-    @field_validator("full_name")
+    @field_validator("full_name", mode="before")
     @classmethod
     def normalize_full_name(cls, value: str | None) -> str | None:
         if value is None:
             return None
+        if not isinstance(value, str):
+            raise ValueError("Full name must be text.")
         value = value.strip()
         if not value:
             raise ValueError("Full name cannot be empty.")
         return value
 
-    @field_validator("email")
+    @field_validator("username", mode="before")
+    @classmethod
+    def normalize_username(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise ValueError("Username must be text.")
+        value = value.strip()
+        if not value:
+            raise ValueError("Username cannot be empty.")
+        return value
+
+    @field_validator("email", mode="before")
     @classmethod
     def normalize_optional_email(cls, value: str | None) -> str | None:
-        return _normalize_email(value) if value else None
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise ValueError("Email must be text.")
+        return _normalize_email(value)
 
 
 class PasswordChangeRequest(BaseModel):

@@ -9,7 +9,7 @@ const routeInfo = {
   "/dataset": { title: "Dataset", description: "Explore the data used to train and evaluate the model." },
   "/users": { title: "User Management", description: "Create accounts and manage access to the application." },
   "/activity": { title: "Activity Log", description: "Review and export administrator-visible account and system events." },
-  "/account": { title: "My Account", description: "Update your profile and password." },
+  "/account": { title: "My Profile", description: "Review and update your basic account details and password." },
   "/admin/users": { title: "User Management", description: "Create accounts and manage access to the application." },
   "/admin/user-details": { title: "User Details", description: "Review and update an account." },
 };
@@ -45,12 +45,27 @@ async function api(path, options = {}) {
   if (["POST", "PATCH", "DELETE"].includes(method) && csrfToken && !headers["X-CSRF-Token"]) {
     headers["X-CSRF-Token"] = csrfToken;
   }
-  const response = await fetch(path, { ...options, method, headers, credentials: "same-origin" });
+  const response = await fetch(path, {
+    ...options,
+    method,
+    headers,
+    credentials: "same-origin",
+    cache: "no-store",
+  });
   const contentType = response.headers.get("content-type") || "";
   const data = contentType.includes("application/json") ? await response.json() : await response.text();
   if (!response.ok) {
     const detail = Array.isArray(data?.detail)
-      ? data.detail.map((item) => item.msg).join("; ")
+      ? data.detail.map((item) => {
+        const field = item.loc?.at(-1);
+        const label = {
+          full_name: "Full Name",
+          username: "Username",
+          email: "Email",
+          role: "Role",
+        }[field];
+        return `${label ? `${label}: ` : ""}${item.msg}`;
+      }).join("; ")
       : data?.detail;
     const error = new Error(detail || `Request failed (${response.status})`);
     error.status = response.status;
@@ -123,9 +138,9 @@ function renderAuthPage(route, message = "", notice = "") {
       </form>`
       : `<p class="message error-message" role="alert">This reset link is missing or invalid. ${authPageLink("/forgot-password", "Request a new link")}</p>`;
   } else {
-    form = `<form id="auth-form">
-      <label>Username or email<input name="username" autocomplete="username" required maxlength="254" /></label>
-      <label>Password<span class="password-input-wrap"><input name="password" type="password" autocomplete="current-password" required maxlength="256" /><button class="password-toggle" type="button" aria-label="Show password" aria-pressed="false">Show</button></span></label>
+    form = `<form id="auth-form" autocomplete="off">
+      <label>Username or email<input name="username" autocomplete="off" required maxlength="254" /></label>
+      <label>Password<span class="password-input-wrap"><input name="password" type="password" autocomplete="new-password" required maxlength="256" /><button class="password-toggle" type="button" aria-label="Show password" aria-pressed="false">Show</button></span></label>
       <label class="remember-control"><input name="remember_me" type="checkbox" /> Remember me <span>Keep this device signed in for 30 days</span></label>
       <div class="auth-actions">${authPageLink("/forgot-password", "Forgot password?")}</div>
       <button class="button button-primary" type="submit">Sign in</button>
@@ -143,6 +158,12 @@ function renderAuthPage(route, message = "", notice = "") {
   </section>`;
   document.title = `${title} | Cold Chain`;
   screen.querySelector('button[type="submit"]').disabled = true;
+  if (route === "/login") {
+    const loginForm = $("#auth-form", screen);
+    loginForm.reset();
+    loginForm.elements.username.value = "";
+    loginForm.elements.password.value = "";
+  }
 }
 
 function bindAuthForm(route) {
@@ -785,6 +806,7 @@ async function submitFollowupQuestion(event) {
 
 async function initializePredictionPage() {
   const form = $("#prediction-form");
+  clearPredictionForm();
   const chatInput = $("#chat-question");
   chatInput.addEventListener("input", () => resizeFollowupField(chatInput));
   chatInput.addEventListener("keydown", (event) => {
@@ -832,18 +854,6 @@ async function initializePredictionPage() {
   } catch (error) {
     $("#form-error").textContent = `Cargo options could not load: ${error.message}`;
     $("#form-error").hidden = false;
-  }
-  try {
-    const saved = sessionStorage.getItem("latestPrediction");
-    if (saved) displayPrediction(JSON.parse(saved), true);
-    const savedMessages = sessionStorage.getItem("predictionFollowupMessages");
-    if (savedMessages) {
-      followupMessages = JSON.parse(savedMessages);
-      renderFollowupMessages();
-    }
-  } catch (error) {
-    sessionStorage.removeItem("latestPrediction");
-    console.error("Could not restore the latest prediction:", error);
   }
 }
 
@@ -940,11 +950,12 @@ function filterHistory() {
 function historyMarkup() {
   return `${pageHeader("Prediction History", routeInfo["/history"].description)}
     <section class="panel history-panel">
+      ${currentUser.role === "ADMIN" ? '<p class="notice"><strong>Admin history</strong><span>Delete my history removes only predictions created by your admin account; other users’ records are retained.</span></p>' : ""}
       <div class="history-controls">
         <label class="search-label">Search predictions<input id="history-search" type="search" placeholder="Cargo type, risk, or recommendation" /></label>
         <label>Risk level<select id="risk-filter"><option value="ALL">All risk levels</option><option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option></select></label>
         <button class="button button-secondary" id="sort-history" type="button">Newest first ↓</button>
-        <button class="button button-danger" id="clear-history" type="button">Clear history</button>
+        <button class="button button-danger" id="clear-history" type="button">${currentUser.role === "ADMIN" ? "Delete my history" : "Clear history"}</button>
       </div>
       <p id="history-count" class="table-summary">Loading saved predictions...</p>
       <div class="table-wrap"><table><thead><tr><th>Timestamp</th><th>Cargo type</th><th>Ambient temp.</th><th>Set point</th><th>HVAC power</th><th>Seal integrity</th><th>Predicted temp.</th><th>Deviation</th><th>Risk</th><th>Recommendation</th></tr></thead><tbody id="history-rows"><tr><td colspan="10" class="empty-state">Loading history...</td></tr></tbody></table></div>
@@ -960,12 +971,15 @@ function bindHistoryControls() {
     filterHistory();
   });
   $("#clear-history").addEventListener("click", async (event) => {
-    if (!historyRows.length || !window.confirm("Permanently clear all locally saved predictions?")) return;
+    const confirmation = currentUser.role === "ADMIN"
+      ? "Permanently delete only prediction records created by your admin account? Other users' history will remain."
+      : "Permanently delete only predictions created by your account?";
+    if (!window.confirm(confirmation)) return;
     const button = event.currentTarget;
     button.disabled = true;
     try {
       await api("/history", { method: "DELETE" });
-      historyRows = [];
+      historyRows = await api("/history?limit=500");
       filterHistory();
     } catch (error) {
       $("#history-count").textContent = `History could not be cleared: ${error.message}`;
@@ -1009,15 +1023,22 @@ function renderDataset(summary) {
 function renderAccountPage(passwordRequired = false, message = "") {
   currentRoute = "/account";
   $("#account-bar").hidden = passwordRequired;
-  document.title = `My Account | Cold Chain`;
-  pageRoot.innerHTML = `${pageHeader(passwordRequired ? "Set a new password" : "My Account", passwordRequired ? `Account ${escapeHtml(currentUser.username)} must change its temporary password before continuing.` : routeInfo["/account"].description)}
+  document.title = `My Profile | Cold Chain`;
+  pageRoot.innerHTML = `${pageHeader(passwordRequired ? "Set a new password" : "My Profile", passwordRequired ? `Account ${escapeHtml(currentUser.username)} must change its temporary password before continuing.` : routeInfo["/account"].description)}
     ${message ? `<p class="message success-message" role="status">${escapeHtml(message)}</p>` : ""}
     ${passwordRequired ? "" : `<section class="panel account-panel">
-      <div class="panel-heading"><div><h2>Profile</h2><p>Update your contact email.</p></div></div>
-      <form id="profile-form" class="account-form">
-        <label>Username<input value="${escapeHtml(currentUser.username)}" disabled /></label>
-        <label>Email address<input name="email" type="email" maxlength="254" value="${escapeHtml(currentUser.email || "")}" /></label>
-        <button class="button button-primary" type="submit">Save profile</button>
+      <div class="panel-heading"><div><h2>Basic details</h2><p>Your name and sign-in information.</p></div></div>
+      <dl class="user-detail-grid profile-summary">
+        <div><dt>Full Name</dt><dd>${escapeHtml(currentUser.full_name || "—")}</dd></div>
+        <div><dt>Username</dt><dd>${escapeHtml(currentUser.username)}</dd></div>
+        <div><dt>Email ID</dt><dd>${escapeHtml(currentUser.email || "—")}</dd></div>
+      </dl>
+      <button class="button button-secondary" id="edit-profile-button" type="button">Edit Profile</button>
+      <form id="profile-form" class="account-form profile-edit-form" hidden>
+        <label>Full Name<input name="full_name" value="${escapeHtml(currentUser.full_name || "")}" required maxlength="120" autocomplete="name" /></label>
+        <label>Username<input name="username" value="${escapeHtml(currentUser.username)}" required minlength="3" maxlength="32" pattern="[A-Za-z0-9_.-]+" autocomplete="username" /></label>
+        <label>Email ID<input name="email" type="email" maxlength="254" value="${escapeHtml(currentUser.email || "")}" required autocomplete="email" /></label>
+        <div class="user-detail-actions"><button class="button button-primary" type="submit">Save Changes</button><button class="button button-secondary" id="cancel-profile-edit" type="button">Cancel</button></div>
         <p id="profile-message" class="message" role="status" hidden></p>
       </form>
     </section>`}
@@ -1032,22 +1053,32 @@ function renderAccountPage(passwordRequired = false, message = "") {
     </section>`;
   const profileForm = $("#profile-form");
   if (profileForm) {
+    $("#edit-profile-button").addEventListener("click", () => {
+      profileForm.hidden = false;
+      $("#edit-profile-button").hidden = true;
+      profileForm.elements.full_name.focus();
+    });
+    $("#cancel-profile-edit").addEventListener("click", () => renderAccountPage());
     profileForm.addEventListener("submit", async (event) => {
       event.preventDefault();
-      const email = new FormData(profileForm).get("email").trim();
       const feedback = $("#profile-message");
+      const submit = profileForm.querySelector('button[type="submit"]');
+      submit.disabled = true;
       try {
         currentUser = await api("/profile", {
           method: "PATCH",
-          body: JSON.stringify({ email: email || null }),
+          body: JSON.stringify(Object.fromEntries(new FormData(profileForm))),
         });
-        feedback.textContent = "Profile updated.";
-        feedback.className = "message success-message";
+        const accountName = $("#account-bar strong");
+        if (accountName) accountName.textContent = currentUser.username;
+        renderAccountPage(false, "Profile updated successfully.");
       } catch (error) {
         feedback.textContent = error.message;
         feedback.className = "message error-message";
+        feedback.hidden = false;
+      } finally {
+        if (submit.isConnected) submit.disabled = false;
       }
-      feedback.hidden = false;
     });
   }
   $("#password-form").addEventListener("submit", async (event) => {
@@ -1205,15 +1236,20 @@ function renderAdminUserDetails(user, notice = "") {
       </dl>
     </section>
     <section class="panel account-panel">
-      <div class="panel-heading"><div><h2>Profile editing</h2><p>Role and deactivation changes require confirmation.</p></div></div>
-      <form id="admin-profile-form" class="account-form" data-user-id="${user.id}" data-original-role="${escapeHtml(user.role)}" data-original-active="${user.is_active}">
+      <div class="panel-heading"><div><h2>Profile editing</h2><p>Basic details and role changes are saved to this account.</p></div></div>
+      <button class="button button-secondary" id="edit-user-profile" type="button">Edit Profile</button>
+      <form id="admin-profile-form" class="account-form" data-user-id="${user.id}" data-original-role="${escapeHtml(user.role)}" hidden>
         <label>Full name<input name="full_name" value="${escapeHtml(user.full_name || "")}" maxlength="120" required /></label>
-        <label>Email<input name="email" type="email" value="${escapeHtml(user.email || "")}" maxlength="254" /></label>
+        <label>Username<input name="username" value="${escapeHtml(user.username)}" minlength="3" maxlength="32" pattern="[A-Za-z0-9_.-]+" required /></label>
+        <label>Email<input name="email" type="email" value="${escapeHtml(user.email || "")}" maxlength="254" required /></label>
         <label>Role<select name="role">${roleOptions}</select></label>
-        <label class="inline-check"><input name="is_active" type="checkbox" ${user.is_active ? "checked" : ""} /> Active account</label>
         <div class="user-detail-actions"><button class="button button-primary" type="submit">Save Changes</button><button class="button button-secondary" id="cancel-user-edit" type="button">Cancel</button></div>
         <p id="admin-profile-message" class="message" role="status" hidden></p>
       </form>
+      <div class="account-access-actions">
+        <p>${user.is_active ? "This account is active and can sign in." : "This account is inactive and cannot sign in."}</p>
+        <button class="button ${user.is_active ? "button-danger" : "button-secondary"}" id="toggle-user-active" type="button" ${user.id === currentUser.id ? "disabled title=\"You cannot deactivate your own account.\"" : ""}>${user.is_active ? "Deactivate account" : "Reactivate account"}</button>
+      </div>
     </section>
     <section class="panel account-panel">
       <div class="panel-heading"><div><h2>Password Management</h2><p>Set a temporary password. The user must change it at next sign-in.</p></div></div>
@@ -1225,15 +1261,17 @@ function renderAdminUserDetails(user, notice = "") {
       </form>
     </section>`;
   const profileForm = $("#admin-profile-form");
+  $("#edit-user-profile").addEventListener("click", () => {
+    profileForm.hidden = false;
+    $("#edit-user-profile").hidden = true;
+    profileForm.elements.full_name.focus();
+  });
   profileForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const values = new FormData(profileForm);
     const nextRole = values.get("role");
-    const nextActive = values.has("is_active");
     const roleChanged = nextRole !== profileForm.dataset.originalRole;
-    const willDeactivate = !nextActive && profileForm.dataset.originalActive === "true";
-    if (roleChanged && !window.confirm(`Confirm changing this account's role from ${profileForm.dataset.originalRole} to ${nextRole}?`)) return;
-    if (willDeactivate && !window.confirm("Confirm deactivating this account? The user will be signed out.")) return;
+    if (roleChanged && !window.confirm(`Change this account's role from ${profileForm.dataset.originalRole} to ${nextRole}?`)) return;
     const feedback = $("#admin-profile-message");
     const button = profileForm.querySelector('button[type="submit"]');
     button.disabled = true;
@@ -1242,15 +1280,18 @@ function renderAdminUserDetails(user, notice = "") {
         method: "PATCH",
         body: JSON.stringify({
           full_name: values.get("full_name"),
-          email: values.get("email") || null,
+          username: values.get("username"),
+          email: values.get("email"),
           role: nextRole,
-          is_active: nextActive,
         }),
       });
-      feedback.textContent = "Account changes saved.";
-      feedback.className = "message success-message";
-      feedback.hidden = false;
       const fresh = await api(`/admin/users/${updated.id}`);
+      if (fresh.id === currentUser.id) {
+        currentUser = { ...currentUser, ...fresh };
+        const accountBar = $("#account-bar");
+        accountBar.querySelector("strong").textContent = currentUser.username;
+        accountBar.querySelector("small").textContent = currentUser.role;
+      }
       renderAdminUserDetails(fresh, "Account changes saved.");
     } catch (error) {
       feedback.textContent = error.message;
@@ -1258,6 +1299,29 @@ function renderAdminUserDetails(user, notice = "") {
       feedback.hidden = false;
     } finally {
       if (button.isConnected) button.disabled = false;
+    }
+  });
+  $("#toggle-user-active").addEventListener("click", async (event) => {
+    const nextActive = !user.is_active;
+    const action = nextActive ? "reactivate" : "deactivate";
+    const confirmation = nextActive
+      ? `Reactivate ${user.username}'s account?`
+      : `Deactivate ${user.username}'s account? They will lose access, but their prediction history will be retained.`;
+    if (!window.confirm(confirmation)) return;
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      const updated = await api(`/admin/users/${user.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ is_active: nextActive }),
+      });
+      renderAdminUserDetails(updated, `Account ${action}d.`);
+    } catch (error) {
+      const feedback = $("#admin-profile-message");
+      feedback.textContent = error.message;
+      feedback.className = "message error-message";
+      feedback.hidden = false;
+      button.disabled = false;
     }
   });
   $("#cancel-user-edit").addEventListener("click", () => renderAdminUserDetails(user));

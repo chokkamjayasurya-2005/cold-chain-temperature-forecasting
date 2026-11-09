@@ -209,15 +209,12 @@ def read_history(limit: int = 50, user_id: int | None = None) -> list[dict]:
     ]
 
 
-def clear_history(user_id: int | None = None) -> int:
+def clear_history(user_id: int) -> int:
     with _connect() as connection:
-        if user_id is None:
-            cursor = connection.execute("DELETE FROM prediction_history")
-        else:
-            cursor = connection.execute(
-                "DELETE FROM prediction_history WHERE user_id = ?",
-                (user_id,),
-            )
+        cursor = connection.execute(
+            "DELETE FROM prediction_history WHERE user_id = ?",
+            (user_id,),
+        )
         return cursor.rowcount
 
 
@@ -346,7 +343,7 @@ def record_login(user_id: int) -> None:
 
 
 def update_user(user_id: int, updates: dict[str, Any]) -> None:
-    allowed = {"full_name", "email", "role", "is_active", "must_change_password"}
+    allowed = {"full_name", "username", "email", "role", "is_active", "must_change_password"}
     if not updates or not set(updates).issubset(allowed):
         raise ValueError("Invalid user update.")
     assignments = ", ".join(f"{key} = ?" for key in updates)
@@ -362,7 +359,7 @@ def update_user(user_id: int, updates: dict[str, Any]) -> None:
 
 
 def update_user_guarded(user_id: int, updates: dict[str, Any]) -> bool:
-    allowed = {"full_name", "email", "role", "is_active", "must_change_password"}
+    allowed = {"full_name", "username", "email", "role", "is_active", "must_change_password"}
     if not updates or not set(updates).issubset(allowed):
         raise ValueError("Invalid user update.")
     with _connect() as connection:
